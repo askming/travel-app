@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { MapPin, Calendar, ArrowRight, Send, Trash2 } from 'lucide-react'
 import MarkdownContent from '../components/MarkdownContent'
@@ -205,12 +205,12 @@ function Comments({ tripId, isOwner }) {
 // ── main ─────────────────────────────────────────────────────────────────────
 export default function SharePage() {
   const { tripId } = useParams()
-  const [searchParams] = useSearchParams()
   const [trip, setTrip] = useState(null)
   const [stops, setStops] = useState([])
   const [entries, setEntries] = useState([])
-  const [tab, setTab] = useState(searchParams.get('tab') || 'itinerary')
+  const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'itinerary')
   const [userId, setUserId] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
@@ -218,8 +218,8 @@ export default function SharePage() {
 
     supabase.from('trips').select('*').eq('id', tripId).eq('is_public', true).single()
       .then(({ data }) => {
-        if (!data) { setNotFound(true); return }
-        setTrip(data)
+        if (!data) { setNotFound(true) } else { setTrip(data) }
+        setLoading(false)
       })
 
     supabase.from('stops').select('*').eq('trip_id', tripId).order('start_date')
@@ -228,6 +228,12 @@ export default function SharePage() {
     supabase.from('diary_entries').select('*, diary_photos(*)').eq('trip_id', tripId).order('date')
       .then(({ data }) => setEntries(data || []))
   }, [tripId])
+
+  if (loading) return (
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+      <p className="text-stone-400 text-sm">Loading…</p>
+    </div>
+  )
 
   if (notFound) return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
@@ -238,7 +244,7 @@ export default function SharePage() {
     </div>
   )
 
-  if (!trip) return null
+  if (!trip) return null  // shouldn't reach here given loading/notFound guards above
 
   const isOwner = userId === trip.user_id
   const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
