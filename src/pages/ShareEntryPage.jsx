@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import MarkdownContent from '../components/MarkdownContent'
 import Lightbox from '../components/Lightbox'
 
@@ -18,7 +18,7 @@ function PhotoGrid({ photos, onPhotoClick }) {
   )
 }
 
-export default function DiaryEntryPage() {
+export default function ShareEntryPage() {
   const { tripId, entryId } = useParams()
   const navigate = useNavigate()
   const [entry, setEntry] = useState(null)
@@ -29,22 +29,14 @@ export default function DiaryEntryPage() {
       .then(({ data }) => setEntry(data))
   }, [entryId])
 
-  async function deletePhoto(photo) {
-    if (!confirm('Remove this photo?')) return
-    await supabase.storage.from('diary-photos').remove([photo.path])
-    await supabase.from('diary_photos').delete().eq('id', photo.id)
-    setEntry(e => ({ ...e, diary_photos: e.diary_photos.filter(p => p.id !== photo.id) }))
-    if (lightboxIndex !== null) setLightboxIndex(null)
-  }
-
   if (!entry) return null
   const photos = entry.diary_photos || []
 
   return (
     <div className="min-h-screen bg-stone-50">
       <header className="bg-white border-b border-stone-200 px-6 py-4">
-        <button onClick={() => navigate(`/trips/${tripId}?tab=diary`)} className="flex items-center gap-2 text-stone-500 hover:text-stone-800 text-sm">
-          <ArrowLeft size={16} /> Back to diary
+        <button onClick={() => navigate(`/share/${tripId}`)} className="flex items-center gap-2 text-stone-500 hover:text-stone-800 text-sm">
+          <ArrowLeft size={16} /> Back to trip
         </button>
       </header>
       <main className="max-w-2xl mx-auto px-6 py-8 space-y-6">
@@ -55,19 +47,7 @@ export default function DiaryEntryPage() {
           {entry.title && <h1 className="text-2xl font-semibold text-stone-800 mt-1">{entry.title}</h1>}
         </div>
         {entry.body && <MarkdownContent source={entry.body} />}
-        {photos.length > 0 && (
-          <div className="relative group">
-            <PhotoGrid photos={photos} onPhotoClick={setLightboxIndex} />
-            <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {photos.map(photo => (
-                <button key={photo.id} onClick={() => deletePhoto(photo)}
-                  className="bg-black/60 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors" title="Remove photo">
-                  <Trash2 size={12} />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {photos.length > 0 && <PhotoGrid photos={photos} onPhotoClick={setLightboxIndex} />}
       </main>
       {lightboxIndex !== null && <Lightbox photos={photos} startIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />}
     </div>

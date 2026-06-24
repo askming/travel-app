@@ -5,6 +5,8 @@ import LoginPage from './pages/LoginPage'
 import TripsPage from './pages/TripsPage'
 import TripPage from './pages/TripPage'
 import DiaryEntryPage from './pages/DiaryEntryPage'
+import SharePage from './pages/SharePage'
+import ShareEntryPage from './pages/ShareEntryPage'
 
 export default function App() {
   const [session, setSession] = useState(undefined)
@@ -24,6 +26,9 @@ export default function App() {
         <Route path="/" element={session ? <TripsPage /> : <Navigate to="/login" />} />
         <Route path="/trips/:id" element={session ? <TripPage /> : <Navigate to="/login" />} />
         <Route path="/trips/:tripId/diary/:entryId" element={session ? <DiaryEntryPage /> : <Navigate to="/login" />} />
+        {/* Public routes — no auth required */}
+        <Route path="/share/:tripId" element={<SharePage />} />
+        <Route path="/share/:tripId/diary/:entryId" element={<ShareEntryPage />} />
       </Routes>
     </BrowserRouter>
   )
