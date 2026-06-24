@@ -24,11 +24,10 @@ export default function App() {
       <Routes>
         <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/" />} />
         <Route path="/" element={session ? <TripsPage /> : <Navigate to="/login" />} />
-        <Route path="/trips/:id" element={session ? <TripPage /> : <Navigate to="/login" />} />
-        <Route path="/trips/:tripId/diary/:entryId" element={session ? <DiaryEntryPage /> : <Navigate to="/login" />} />
-        {/* Public routes — no auth required */}
-        <Route path="/share/:tripId" element={<SharePage />} />
-        <Route path="/share/:tripId/diary/:entryId" element={<ShareEntryPage />} />
+        <Route path="/trips/:slug" element={session ? <TripPage /> : <Navigate to="/login" />} />
+        <Route path="/trips/:slug/diary/:entryId" element={session ? <DiaryEntryPage /> : <Navigate to="/login" />} />
+        <Route path="/share/:slug" element={<SharePage />} />
+        <Route path="/share/:slug/diary/:entryId" element={<ShareEntryPage />} />
       </Routes>
     </BrowserRouter>
   )

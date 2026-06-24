@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { toSlug } from '../lib/slug'
 import { ArrowLeft, Pencil, Check, X, Calendar, Globe, Lock, Copy, CheckCheck } from 'lucide-react'
 import ItineraryTab from '../components/ItineraryTab'
 import DiaryTab from '../components/DiaryTab'
@@ -14,38 +15,42 @@ function formatTripDates(start, end) {
 }
 
 export default function TripPage() {
-  const { id } = useParams()
+  const { slug } = useParams()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const [trip, setTrip] = useState(null)
-  const [tab, setTab] = useState(searchParams.get('tab') || 'itinerary')
+  const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'itinerary')
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({})
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    supabase.from('trips').select('*').eq('id', id).single().then(({ data }) => setTrip(data))
-  }, [id])
+    supabase.from('trips').select('*').eq('slug', slug).single()
+      .then(({ data }) => setTrip(data))
+  }, [slug])
 
   function startEdit() {
-    setEditForm({ title: trip.title, destination: trip.destination, cover_emoji: trip.cover_emoji, start_date: trip.start_date || '', end_date: trip.end_date || '' })
+    setEditForm({ title: trip.title, destination: trip.destination || '', cover_emoji: trip.cover_emoji, start_date: trip.start_date || '', end_date: trip.end_date || '' })
     setEditing(true)
   }
 
   async function saveEdit(e) {
     e.preventDefault()
-    const { data } = await supabase.from('trips').update(editForm).eq('id', id).select().single()
-    if (data) setTrip(data)
-    setEditing(false)
+    const newSlug = toSlug(editForm.title)
+    const { data } = await supabase.from('trips').update({ ...editForm, slug: newSlug }).eq('id', trip.id).select().single()
+    if (data) {
+      setTrip(data)
+      setEditing(false)
+      if (newSlug !== slug) navigate(`/trips/${newSlug}`, { replace: true })
+    }
   }
 
   async function togglePublic() {
-    const { data } = await supabase.from('trips').update({ is_public: !trip.is_public }).eq('id', id).select().single()
+    const { data } = await supabase.from('trips').update({ is_public: !trip.is_public }).eq('id', trip.id).select().single()
     if (data) setTrip(data)
   }
 
   function copyShareLink() {
-    const url = `${window.location.origin}${import.meta.env.BASE_URL}share/${id}`
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}share/${trip.slug}`
     navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -53,7 +58,7 @@ export default function TripPage() {
 
   if (!trip) return null
 
-  const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}share/${id}`
+  const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}share/${trip.slug}`
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -105,10 +110,8 @@ export default function TripPage() {
               })()}
             </div>
             <div className="flex items-center gap-2 shrink-0 mt-0.5">
-              {/* Share toggle */}
               <button onClick={togglePublic}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${trip.is_public ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
-              >
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${trip.is_public ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}>
                 {trip.is_public ? <Globe size={11} /> : <Lock size={11} />}
                 {trip.is_public ? 'Public' : 'Private'}
               </button>
@@ -119,7 +122,6 @@ export default function TripPage() {
           </div>
         )}
 
-        {/* Share URL bar */}
         {trip.is_public && (
           <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
             <p className="text-xs text-green-700 truncate flex-1">{shareUrl}</p>
@@ -138,7 +140,10 @@ export default function TripPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-6">
-        {tab === 'itinerary' ? <ItineraryTab tripId={id} /> : <DiaryTab tripId={id} />}
+        {tab === 'itinerary'
+          ? <ItineraryTab tripId={trip.id} />
+          : <DiaryTab tripId={trip.id} tripSlug={trip.slug} />
+        }
       </main>
     </div>
   )

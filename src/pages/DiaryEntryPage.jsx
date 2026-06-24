@@ -8,9 +8,9 @@ import Lightbox from '../components/Lightbox'
 function PhotoGrid({ photos, onPhotoClick }) {
   if (!photos.length) return null
   return (
-    <div className="grid grid-cols-3 gap-1">
+    <div className="grid grid-cols-3 gap-2">
       {photos.map((p, i) => (
-        <button key={p.id} onClick={() => onPhotoClick(i)} className="aspect-square overflow-hidden rounded-sm">
+        <button key={p.id} onClick={() => onPhotoClick(i)} className="aspect-square overflow-hidden rounded-xl">
           <img src={p.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
         </button>
       ))}
@@ -19,7 +19,7 @@ function PhotoGrid({ photos, onPhotoClick }) {
 }
 
 export default function DiaryEntryPage() {
-  const { tripId, entryId } = useParams()
+  const { slug, entryId } = useParams()
   const navigate = useNavigate()
   const [entry, setEntry] = useState(null)
   const [lightboxIndex, setLightboxIndex] = useState(null)
@@ -43,7 +43,7 @@ export default function DiaryEntryPage() {
   return (
     <div className="min-h-screen bg-stone-50">
       <header className="bg-white border-b border-stone-200 px-6 py-4">
-        <button onClick={() => navigate(`/trips/${tripId}?tab=diary`)} className="flex items-center gap-2 text-stone-500 hover:text-stone-800 text-sm">
+        <button onClick={() => navigate(`/trips/${slug}?tab=diary`)} className="flex items-center gap-2 text-stone-500 hover:text-stone-800 text-sm">
           <ArrowLeft size={16} /> Back to diary
         </button>
       </header>

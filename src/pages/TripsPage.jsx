@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { toSlug } from '../lib/slug'
 import { Plus, LogOut, MapPin, Calendar, Pencil, Trash2 } from 'lucide-react'
 import EmojiPicker from '../components/EmojiPicker'
 
@@ -24,19 +25,8 @@ function TripFormModal({ title, form, setForm, onSubmit, onClose, submitLabel })
               <EmojiPicker value={form.cover_emoji} onChange={e => setForm(f => ({ ...f, cover_emoji: e }))} />
             </div>
           </div>
-          <input
-            placeholder="Trip title *"
-            value={form.title}
-            onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-            required
-            className={inputCls}
-          />
-          <input
-            placeholder="Destination"
-            value={form.destination}
-            onChange={e => setForm(f => ({ ...f, destination: e.target.value }))}
-            className={inputCls}
-          />
+          <input placeholder="Trip title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required className={inputCls} />
+          <input placeholder="Destination" value={form.destination} onChange={e => setForm(f => ({ ...f, destination: e.target.value }))} className={inputCls} />
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-xs text-stone-500">Start date</label>
@@ -78,10 +68,16 @@ export default function TripsPage() {
   async function createTrip(e) {
     e.preventDefault()
     const { data: { user } } = await supabase.auth.getUser()
-    const { data, error } = await supabase.from('trips').insert({ ...form, user_id: user.id }).select().single()
+    const slug = toSlug(form.title)
+    const { data, error } = await supabase.from('trips').insert({ ...form, user_id: user.id, slug }).select().single()
     if (!error) {
       setShowForm(false)
-      navigate(`/trips/${data.id}`)
+      navigate(`/trips/${data.slug}`)
+    } else if (error.code === '23505') {
+      // slug conflict — append timestamp suffix
+      const uniqueSlug = `${slug}-${Date.now().toString(36)}`
+      const { data: d2 } = await supabase.from('trips').insert({ ...form, user_id: user.id, slug: uniqueSlug }).select().single()
+      if (d2) { setShowForm(false); navigate(`/trips/${d2.slug}`) }
     }
   }
 
@@ -93,7 +89,8 @@ export default function TripsPage() {
 
   async function saveEdit(e) {
     e.preventDefault()
-    await supabase.from('trips').update(form).eq('id', editingTrip.id)
+    const newSlug = toSlug(form.title)
+    await supabase.from('trips').update({ ...form, slug: newSlug }).eq('id', editingTrip.id)
     setEditingTrip(null)
     fetchTrips()
   }
@@ -101,14 +98,8 @@ export default function TripsPage() {
   async function deleteTrip(e, trip) {
     e.stopPropagation()
     if (!confirm(`Delete "${trip.title}" and all its stops, diary entries, and photos? This cannot be undone.`)) return
-    // clean up storage files before cascade-deleting the trip row
-    const { data: photos } = await supabase
-      .from('diary_photos')
-      .select('path, diary_entries!inner(trip_id)')
-      .eq('diary_entries.trip_id', trip.id)
-    if (photos?.length) {
-      await supabase.storage.from('diary-photos').remove(photos.map(p => p.path))
-    }
+    const { data: photos } = await supabase.from('diary_photos').select('path, diary_entries!inner(trip_id)').eq('diary_entries.trip_id', trip.id)
+    if (photos?.length) await supabase.storage.from('diary-photos').remove(photos.map(p => p.path))
     await supabase.from('trips').delete().eq('id', trip.id)
     fetchTrips()
   }
@@ -118,10 +109,8 @@ export default function TripsPage() {
       <header className="bg-white border-b border-stone-200 px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-stone-800">Ming's Travel Log</h1>
         <div className="flex gap-3">
-          <button
-            onClick={() => { setForm(EMPTY_FORM); setShowForm(true) }}
-            className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-stone-700 transition-colors"
-          >
+          <button onClick={() => { setForm(EMPTY_FORM); setShowForm(true) }}
+            className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-stone-700 transition-colors">
             <Plus size={16} /> New trip
           </button>
           <button onClick={() => supabase.auth.signOut()} className="p-2 text-stone-400 hover:text-stone-600">
@@ -142,12 +131,11 @@ export default function TripsPage() {
           <div className="space-y-3">
             {trips.map(trip => {
               const duration = tripDuration(trip.start_date, trip.end_date)
+              const tripUrl = trip.slug ? `/trips/${trip.slug}` : `/trips/${trip.id}`
               return (
                 <div key={trip.id} className="relative group">
-                  <button
-                    onClick={() => navigate(`/trips/${trip.id}`)}
-                    className="w-full bg-white border border-stone-200 rounded-xl p-5 text-left hover:border-stone-400 hover:shadow-sm transition-all"
-                  >
+                  <button onClick={() => navigate(tripUrl)}
+                    className="w-full bg-white border border-stone-200 rounded-xl p-5 text-left hover:border-stone-400 hover:shadow-sm transition-all">
                     <div className="flex items-start gap-4">
                       <span className="text-3xl">{trip.cover_emoji}</span>
                       <div className="flex-1 min-w-0 pr-8">
@@ -167,20 +155,8 @@ export default function TripsPage() {
                     </div>
                   </button>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={e => openEdit(e, trip)}
-                      className="p-1.5 text-stone-300 hover:text-stone-600 rounded-lg hover:bg-stone-100"
-                      title="Edit trip"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      onClick={e => deleteTrip(e, trip)}
-                      className="p-1.5 text-stone-300 hover:text-red-500 rounded-lg hover:bg-red-50"
-                      title="Delete trip"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <button onClick={e => openEdit(e, trip)} className="p-1.5 text-stone-300 hover:text-stone-600 rounded-lg hover:bg-stone-100" title="Edit trip"><Pencil size={15} /></button>
+                    <button onClick={e => deleteTrip(e, trip)} className="p-1.5 text-stone-300 hover:text-red-500 rounded-lg hover:bg-red-50" title="Delete trip"><Trash2 size={15} /></button>
                   </div>
                 </div>
               )
@@ -189,27 +165,8 @@ export default function TripsPage() {
         )}
       </main>
 
-      {showForm && (
-        <TripFormModal
-          title="New trip"
-          form={form}
-          setForm={setForm}
-          onSubmit={createTrip}
-          onClose={() => setShowForm(false)}
-          submitLabel="Create trip"
-        />
-      )}
-
-      {editingTrip && (
-        <TripFormModal
-          title="Edit trip"
-          form={form}
-          setForm={setForm}
-          onSubmit={saveEdit}
-          onClose={() => setEditingTrip(null)}
-          submitLabel="Save changes"
-        />
-      )}
+      {showForm && <TripFormModal title="New trip" form={form} setForm={setForm} onSubmit={createTrip} onClose={() => setShowForm(false)} submitLabel="Create trip" />}
+      {editingTrip && <TripFormModal title="Edit trip" form={form} setForm={setForm} onSubmit={saveEdit} onClose={() => setEditingTrip(null)} submitLabel="Save changes" />}
     </div>
   )
 }

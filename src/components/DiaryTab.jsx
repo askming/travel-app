@@ -21,13 +21,13 @@ function stripMarkdown(md) {
     .trim()
 }
 
-function DiaryEntryCard({ entry, tripId, onEdit, onDelete }) {
+function DiaryEntryCard({ entry, tripId, tripSlug, onEdit, onDelete }) {
   const navigate = useNavigate()
   const hero = entry.diary_photos?.[0]
   const extraPhotos = entry.diary_photos?.slice(1, 4) || []
   const plainText = stripMarkdown(entry.body)
   const hasMore = plainText.length > 280
-  const entryUrl = `/trips/${tripId}/diary/${entry.id}`
+  const entryUrl = `/trips/${tripSlug || tripId}/diary/${entry.id}`
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl overflow-hidden group">
@@ -35,7 +35,7 @@ function DiaryEntryCard({ entry, tripId, onEdit, onDelete }) {
         <div className="flex items-stretch gap-4">
           {/* Thumbnail — height matches text column */}
           {hero && (
-            <button onClick={() => navigate(entryUrl)} className="shrink-0 w-[120px] rounded-lg overflow-hidden">
+            <button onClick={() => navigate(entryUrl)} className="shrink-0 w-[120px] rounded-lg overflow-hidden border border-stone-200">
               <img src={hero.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
             </button>
           )}
@@ -76,7 +76,7 @@ function DiaryEntryCard({ entry, tripId, onEdit, onDelete }) {
   )
 }
 
-export default function DiaryTab({ tripId }) {
+export default function DiaryTab({ tripId, tripSlug }) {
   const [entries, setEntries] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -198,7 +198,7 @@ export default function DiaryTab({ tripId }) {
       ) : (
         <div className="space-y-5">
           {entries.map(entry => (
-            <DiaryEntryCard key={entry.id} entry={entry} tripId={tripId} onEdit={openEdit} onDelete={deleteEntry} />
+            <DiaryEntryCard key={entry.id} entry={entry} tripId={tripId} tripSlug={tripSlug} onEdit={openEdit} onDelete={deleteEntry} />
           ))}
         </div>
       )}

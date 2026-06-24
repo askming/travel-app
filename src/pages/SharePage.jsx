@@ -88,7 +88,7 @@ function ReadOnlyItinerary({ stops }) {
 }
 
 // ── read-only diary ──────────────────────────────────────────────────────────
-function ReadOnlyDiary({ entries, tripId }) {
+function ReadOnlyDiary({ entries, slug }) {
   const navigate = useNavigate()
   if (entries.length === 0) return <p className="text-center text-stone-400 py-12">No diary entries yet.</p>
   return (
@@ -96,13 +96,13 @@ function ReadOnlyDiary({ entries, tripId }) {
       {entries.map(entry => {
         const hero = entry.diary_photos?.[0]
         const plain = stripMarkdown(entry.body)
-        const entryUrl = `/share/${tripId}/diary/${entry.id}`
+        const entryUrl = `/share/${slug}/diary/${entry.id}`
         return (
           <div key={entry.id} className="bg-white border border-stone-200 rounded-xl overflow-hidden">
             <div className="p-5">
               <div className="flex items-stretch gap-4">
                 {hero && (
-                  <button onClick={() => navigate(entryUrl)} className="shrink-0 w-[120px] rounded-lg overflow-hidden">
+                  <button onClick={() => navigate(entryUrl)} className="shrink-0 w-[120px] rounded-lg overflow-hidden border border-stone-200">
                     <img src={hero.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
                   </button>
                 )}
@@ -204,7 +204,7 @@ function Comments({ tripId, isOwner }) {
 
 // ── main ─────────────────────────────────────────────────────────────────────
 export default function SharePage() {
-  const { tripId } = useParams()
+  const { slug } = useParams()
   const [trip, setTrip] = useState(null)
   const [stops, setStops] = useState([])
   const [entries, setEntries] = useState([])
@@ -215,19 +215,18 @@ export default function SharePage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id || null))
-
-    supabase.from('trips').select('*').eq('id', tripId).eq('is_public', true).single()
+    supabase.from('trips').select('*').eq('slug', slug).eq('is_public', true).single()
       .then(({ data }) => {
-        if (!data) { setNotFound(true) } else { setTrip(data) }
+        if (!data) { setNotFound(true); setLoading(false); return }
+        setTrip(data)
         setLoading(false)
+        // fetch sub-data using the UUID
+        supabase.from('stops').select('*').eq('trip_id', data.id).order('start_date')
+          .then(({ data: s }) => setStops(s || []))
+        supabase.from('diary_entries').select('*, diary_photos(*)').eq('trip_id', data.id).order('date')
+          .then(({ data: e }) => setEntries(e || []))
       })
-
-    supabase.from('stops').select('*').eq('trip_id', tripId).order('start_date')
-      .then(({ data }) => setStops(data || []))
-
-    supabase.from('diary_entries').select('*, diary_photos(*)').eq('trip_id', tripId).order('date')
-      .then(({ data }) => setEntries(data || []))
-  }, [tripId])
+  }, [slug])
 
   if (loading) return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
@@ -283,9 +282,9 @@ export default function SharePage() {
       <main className="max-w-4xl mx-auto px-6 py-6">
         {tab === 'itinerary'
           ? <ReadOnlyItinerary stops={stops} />
-          : <ReadOnlyDiary entries={entries} tripId={tripId} />
+          : <ReadOnlyDiary entries={entries} slug={slug} />
         }
-        <Comments tripId={tripId} isOwner={isOwner} />
+        <Comments tripId={trip.id} isOwner={isOwner} />
       </main>
     </div>
   )
