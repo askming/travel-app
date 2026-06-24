@@ -8,14 +8,16 @@
     <script>
       // Restore path encoded by 404.html redirect.
       (function () {
-        var p = new URLSearchParams(window.location.search).get('p');
+        var params = new URLSearchParams(window.location.search)
+        var p = params.get('p')
         if (p) {
-          var url = window.location.pathname.replace(/\/$/, '') + '/' + p +
-            window.location.search.replace(/[?&]p=[^&]*/, '').replace(/^&/, '?') +
-            window.location.hash;
-          window.history.replaceState(null, '', url);
+          p = decodeURIComponent(p).replace(/^\/+/, '') // strip any leading slashes
+          var base = '/' + window.location.pathname.split('/').filter(Boolean)[0]
+          params.delete('p')
+          var search = params.toString() ? '?' + params.toString() : ''
+          window.history.replaceState(null, '', base + '/' + p + search + window.location.hash)
         }
-      })();
+      })()
     </script>
   </head>
   <body>
