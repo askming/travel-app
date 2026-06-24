@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ming's Travel Log</title>
+    <script>
+      // Redirect deep links to index.html, preserving the path as a query param.
+      // pathSegmentsToKeep=1 keeps '/travel-app' (the GitHub Pages repo prefix).
+      var l = window.location;
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 2).join('/') +
+        '/?p=' + encodeURIComponent(l.pathname.split('/').slice(2).join('/')) +
+        (l.search ? '&' + l.search.slice(1) : '') +
+        l.hash
+      );
+    </script>
+  </head>
+</html>

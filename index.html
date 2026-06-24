@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ming's Travel Log</title>
+    <script>
+      // Restore path encoded by 404.html redirect.
+      (function () {
+        var p = new URLSearchParams(window.location.search).get('p');
+        if (p) {
+          var url = window.location.pathname + '/' + p +
+            window.location.search.replace(/[?&]p=[^&]*/, '').replace(/^&/, '?') +
+            window.location.hash;
+          window.history.replaceState(null, '', url);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
