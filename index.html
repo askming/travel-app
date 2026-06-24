@@ -10,7 +10,7 @@
       (function () {
         var p = new URLSearchParams(window.location.search).get('p');
         if (p) {
-          var url = window.location.pathname + '/' + p +
+          var url = window.location.pathname.replace(/\/$/, '') + '/' + p +
             window.location.search.replace(/[?&]p=[^&]*/, '').replace(/^&/, '?') +
             window.location.hash;
           window.history.replaceState(null, '', url);
