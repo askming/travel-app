@@ -27,7 +27,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-8 w-full max-w-sm">
-        <h1 className="text-2xl font-semibold text-stone-800 mb-1">Wanderlog</h1>
+        <h1 className="text-2xl font-semibold text-stone-800 mb-1">Ming's Travel Log</h1>
         <p className="text-stone-500 text-sm mb-6">Your personal travel diary</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

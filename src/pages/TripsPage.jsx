@@ -116,7 +116,7 @@ export default function TripsPage() {
   return (
     <div className="min-h-screen bg-stone-50">
       <header className="bg-white border-b border-stone-200 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-stone-800">Wanderlog</h1>
+        <h1 className="text-xl font-semibold text-stone-800">Ming's Travel Log</h1>
         <div className="flex gap-3">
           <button
             onClick={() => { setForm(EMPTY_FORM); setShowForm(true) }}
