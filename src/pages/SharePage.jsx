@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { MapPin, Calendar, ArrowRight, Send, Trash2 } from 'lucide-react'
 import MarkdownContent from '../components/MarkdownContent'
@@ -99,31 +99,28 @@ function ReadOnlyDiary({ entries, tripId }) {
         const entryUrl = `/share/${tripId}/diary/${entry.id}`
         return (
           <div key={entry.id} className="bg-white border border-stone-200 rounded-xl overflow-hidden">
-            {hero && (
-              <button onClick={() => navigate(entryUrl)} className="block w-full">
-                <div className="w-full aspect-square overflow-hidden">
-                  <img src={hero.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-                </div>
-              </button>
-            )}
             <div className="p-5">
               <div className="flex items-stretch gap-4">
-                {!hero && entry.diary_photos?.[0] === undefined && null}
+                {hero && (
+                  <button onClick={() => navigate(entryUrl)} className="shrink-0 w-[120px] rounded-lg overflow-hidden">
+                    <img src={hero.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                  </button>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-stone-400 font-medium">
                     {entry.date ? new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
                   </p>
                   {entry.title && <button onClick={() => navigate(entryUrl)} className="font-semibold text-stone-800 mt-0.5 hover:text-stone-500 transition-colors text-left block">{entry.title}</button>}
                   {plain && <p className="text-sm text-stone-600 leading-relaxed line-clamp-4 mt-1">{plain}</p>}
+                  {(plain.length > 280 || (entry.diary_photos?.length || 0) > 0) && (
+                    <div className="flex justify-end mt-2">
+                      <button onClick={() => navigate(entryUrl)} className="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-700 font-medium">
+                        Read more <ArrowRight size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-              {(plain.length > 280 || (entry.diary_photos?.length || 0) > 0) && (
-                <div className="flex justify-end mt-3">
-                  <button onClick={() => navigate(entryUrl)} className="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-700 font-medium">
-                    Read more <ArrowRight size={13} />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )
@@ -208,10 +205,11 @@ function Comments({ tripId, isOwner }) {
 // ── main ─────────────────────────────────────────────────────────────────────
 export default function SharePage() {
   const { tripId } = useParams()
+  const [searchParams] = useSearchParams()
   const [trip, setTrip] = useState(null)
   const [stops, setStops] = useState([])
   const [entries, setEntries] = useState([])
-  const [tab, setTab] = useState('itinerary')
+  const [tab, setTab] = useState(searchParams.get('tab') || 'itinerary')
   const [userId, setUserId] = useState(null)
   const [notFound, setNotFound] = useState(false)
 

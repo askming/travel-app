@@ -35,8 +35,8 @@ export default function ShareEntryPage() {
   return (
     <div className="min-h-screen bg-stone-50">
       <header className="bg-white border-b border-stone-200 px-6 py-4">
-        <button onClick={() => navigate(`/share/${tripId}`)} className="flex items-center gap-2 text-stone-500 hover:text-stone-800 text-sm">
-          <ArrowLeft size={16} /> Back to trip
+        <button onClick={() => navigate(`/share/${tripId}?tab=diary`)} className="flex items-center gap-2 text-stone-500 hover:text-stone-800 text-sm">
+          <ArrowLeft size={16} /> Back to diary
         </button>
       </header>
       <main className="max-w-2xl mx-auto px-6 py-8 space-y-6">
