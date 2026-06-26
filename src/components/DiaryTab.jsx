@@ -3,43 +3,36 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Plus, Trash2, Image, Pencil, ArrowRight, X } from 'lucide-react'
 import MarkdownEditor from './MarkdownEditor'
+import LabelChip from './LabelChip'
+import TagInput from './TagInput'
 
 const MAX_PHOTOS = 10
 
 function stripMarkdown(md) {
   if (!md) return ''
   return md
-    .replace(/#{1,6}\s+/g, '')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/~~(.*?)~~/g, '$1')
-    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-    .replace(/`(.*?)`/g, '$1')
-    .replace(/^[-*+]\s/gm, '')
-    .replace(/^\d+\.\s/gm, '')
-    .replace(/^>\s/gm, '')
-    .trim()
+    .replace(/#{1,6}\s+/g, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')
+    .replace(/~~(.*?)~~/g, '$1').replace(/\[(.*?)\]\(.*?\)/g, '$1').replace(/`(.*?)`/g, '$1')
+    .replace(/^[-*+]\s/gm, '').replace(/^\d+\.\s/gm, '').replace(/^>\s/gm, '').trim()
 }
 
 function DiaryEntryCard({ entry, tripId, tripSlug, onEdit, onDelete }) {
   const navigate = useNavigate()
   const hero = entry.diary_photos?.[0]
-  const extraPhotos = entry.diary_photos?.slice(1, 4) || []
   const plainText = stripMarkdown(entry.body)
   const hasMore = plainText.length > 280
+  const labels = entry.labels || []
   const entryUrl = `/trips/${tripSlug || tripId}/diary/${entry.id}`
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl overflow-hidden group">
       <div className="p-5">
         <div className="flex items-stretch gap-4">
-          {/* Thumbnail — height matches text column */}
           {hero && (
             <button onClick={() => navigate(entryUrl)} className="shrink-0 w-[120px] rounded-lg overflow-hidden border border-stone-200">
               <img src={hero.url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
             </button>
           )}
-
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-1">
               <div className="min-w-0">
@@ -57,14 +50,15 @@ function DiaryEntryCard({ entry, tripId, tripSlug, onEdit, onDelete }) {
                 <button onClick={() => onDelete(entry)} className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-red-50"><Trash2 size={14} /></button>
               </div>
             </div>
-
-            {plainText && (
-              <p className="text-sm text-stone-600 leading-relaxed line-clamp-4 mt-1">{plainText}</p>
+            {plainText && <p className="text-sm text-stone-600 leading-relaxed line-clamp-4 mt-1">{plainText}</p>}
+            {labels.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {labels.map(l => <LabelChip key={l} label={l} />)}
+              </div>
             )}
           </div>
         </div>
-
-        {(hasMore || entry.diary_photos?.length > 0) && (
+        {(hasMore || (entry.diary_photos?.length || 0) > 0) && (
           <div className="flex justify-end mt-3">
             <button onClick={() => navigate(entryUrl)} className="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-700 font-medium transition-colors">
               Read more <ArrowRight size={13} />
@@ -80,33 +74,31 @@ export default function DiaryTab({ tripId, tripSlug }) {
   const [entries, setEntries] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ date: '', title: '', body: '' })
+  const [form, setForm] = useState({ date: '', title: '', body: '', labels: [] })
   const [existingPhotos, setExistingPhotos] = useState([])
   const [files, setFiles] = useState([])
   const [filePreviews, setFilePreviews] = useState([])
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [activeLabel, setActiveLabel] = useState(null)
   const fileRef = useRef()
 
   useEffect(() => { fetchEntries() }, [tripId])
 
   async function fetchEntries() {
-    const { data } = await supabase
-      .from('diary_entries')
-      .select('*, diary_photos(*)')
-      .eq('trip_id', tripId)
-      .order('date')
+    const { data } = await supabase.from('diary_entries').select('*, diary_photos(*)')
+      .eq('trip_id', tripId).order('date')
     setEntries(data || [])
   }
 
   function openNew() {
-    setForm({ date: '', title: '', body: '' })
+    setForm({ date: '', title: '', body: '', labels: [] })
     setFiles([]); setFilePreviews([]); setExistingPhotos([])
     setUploadError(''); setEditing(null); setShowForm(true)
   }
 
   function openEdit(entry) {
-    setForm({ date: entry.date, title: entry.title || '', body: entry.body || '' })
+    setForm({ date: entry.date, title: entry.title || '', body: entry.body || '', labels: entry.labels || [] })
     setFiles([]); setFilePreviews([]); setExistingPhotos(entry.diary_photos || [])
     setUploadError(''); setEditing(entry.id); setShowForm(true)
   }
@@ -122,8 +114,7 @@ export default function DiaryTab({ tripId, tripSlug }) {
     await supabase.from('diary_photos').delete().eq('id', photo.id)
     setExistingPhotos(prev => prev.filter(p => p.id !== photo.id))
     setEntries(prev => prev.map(e => e.id === editing
-      ? { ...e, diary_photos: e.diary_photos.filter(p => p.id !== photo.id) }
-      : e
+      ? { ...e, diary_photos: e.diary_photos.filter(p => p.id !== photo.id) } : e
     ))
   }
 
@@ -151,22 +142,16 @@ export default function DiaryTab({ tripId, tripSlug }) {
     for (const file of files) {
       const path = `${user.id}/${entryId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
       const { error } = await supabase.storage.from('diary-photos').upload(path, file)
-      if (error) {
-        errors.push(`${file.name}: ${error.message}`)
-      } else {
+      if (error) { errors.push(`${file.name}: ${error.message}`) }
+      else {
         const { data: { publicUrl } } = supabase.storage.from('diary-photos').getPublicUrl(path)
         await supabase.from('diary_photos').insert({ entry_id: entryId, url: publicUrl, path })
       }
     }
 
     setUploading(false)
-    if (errors.length) {
-      setUploadError(`Photo upload failed — ${errors.join('; ')}`)
-      fetchEntries()
-    } else {
-      setShowForm(false)
-      fetchEntries()
-    }
+    if (errors.length) { setUploadError(`Photo upload failed — ${errors.join('; ')}`); fetchEntries() }
+    else { setShowForm(false); fetchEntries() }
   }
 
   async function deleteEntry(entry) {
@@ -179,6 +164,8 @@ export default function DiaryTab({ tripId, tripSlug }) {
     fetchEntries()
   }
 
+  const allLabels = [...new Set(entries.flatMap(e => e.labels || []))]
+  const displayed = activeLabel ? entries.filter(e => (e.labels || []).includes(activeLabel)) : entries
   const inputCls = 'w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400'
   const totalPhotos = existingPhotos.length + files.length
 
@@ -190,14 +177,27 @@ export default function DiaryTab({ tripId, tripSlug }) {
         </button>
       </div>
 
-      {entries.length === 0 ? (
+      {/* Label filter bar */}
+      {allLabels.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-stone-200">
+          <button
+            onClick={() => setActiveLabel(null)}
+            className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${!activeLabel ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
+          >All</button>
+          {allLabels.map(l => (
+            <LabelChip key={l} label={l} onClick={() => setActiveLabel(activeLabel === l ? null : l)} active={activeLabel === l} />
+          ))}
+        </div>
+      )}
+
+      {displayed.length === 0 ? (
         <div className="text-center py-16 text-stone-400">
           <Image size={32} className="mx-auto mb-3 opacity-40" />
-          <p>No diary entries yet.</p>
+          <p>{entries.length === 0 ? 'No diary entries yet.' : `No entries labelled "${activeLabel}".`}</p>
         </div>
       ) : (
         <div className="space-y-5">
-          {entries.map(entry => (
+          {displayed.map(entry => (
             <DiaryEntryCard key={entry.id} entry={entry} tripId={tripId} tripSlug={tripSlug} onEdit={openEdit} onDelete={deleteEntry} />
           ))}
         </div>
@@ -212,15 +212,17 @@ export default function DiaryTab({ tripId, tripSlug }) {
               <input placeholder="Title (optional)" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className={inputCls} />
               <div>
                 <label className="text-xs font-medium text-stone-500 mb-1 block">Entry</label>
-                <MarkdownEditor
-                  value={form.body}
-                  onChange={v => setForm(f => ({ ...f, body: v }))}
-                  placeholder="Write about your day… use **bold**, - lists, [links](url), emojis 🌸"
-                  height={260}
+                <MarkdownEditor value={form.body} onChange={v => setForm(f => ({ ...f, body: v }))}
+                  placeholder="Write about your day… use **bold**, - lists, [links](url), emojis 🌸" height={260} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-stone-500 mb-1 block">Labels</label>
+                <TagInput
+                  value={form.labels}
+                  onChange={labels => setForm(f => ({ ...f, labels }))}
+                  suggestions={allLabels}
                 />
               </div>
-
-              {/* Existing photos */}
               {existingPhotos.length > 0 && (
                 <div>
                   <label className="text-xs font-medium text-stone-500 mb-2 block">Current photos</label>
@@ -228,12 +230,8 @@ export default function DiaryTab({ tripId, tripSlug }) {
                     {existingPhotos.map(photo => (
                       <div key={photo.id} className="relative group/photo bg-stone-100 rounded-lg overflow-hidden">
                         <img src={photo.url} alt="" className="w-full h-auto max-h-32 object-contain" />
-                        <button
-                          type="button"
-                          onClick={() => removeExistingPhoto(photo)}
-                          className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover/photo:opacity-100 transition-opacity"
-                          title="Remove photo"
-                        >
+                        <button type="button" onClick={() => removeExistingPhoto(photo)}
+                          className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
                           <X size={12} />
                         </button>
                       </div>
@@ -241,8 +239,6 @@ export default function DiaryTab({ tripId, tripSlug }) {
                   </div>
                 </div>
               )}
-
-              {/* New file previews */}
               {filePreviews.length > 0 && (
                 <div>
                   <label className="text-xs font-medium text-stone-500 mb-2 block">New photos to upload</label>
@@ -250,11 +246,8 @@ export default function DiaryTab({ tripId, tripSlug }) {
                     {filePreviews.map((src, i) => (
                       <div key={i} className="relative group/photo bg-stone-100 rounded-lg overflow-hidden">
                         <img src={src} alt="" className="w-full h-auto max-h-32 object-contain" />
-                        <button
-                          type="button"
-                          onClick={() => removeNewFile(i)}
-                          className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover/photo:opacity-100 transition-opacity"
-                        >
+                        <button type="button" onClick={() => removeNewFile(i)}
+                          className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
                           <X size={12} />
                         </button>
                       </div>
@@ -262,20 +255,16 @@ export default function DiaryTab({ tripId, tripSlug }) {
                   </div>
                 </div>
               )}
-
-              {/* Add photos button */}
               {totalPhotos < MAX_PHOTOS && (
                 <div>
                   <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
                   <button type="button" onClick={() => fileRef.current.click()}
-                    className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-800 border border-dashed border-stone-300 rounded-lg px-3 py-2 w-full hover:border-stone-400"
-                  >
+                    className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-800 border border-dashed border-stone-300 rounded-lg px-3 py-2 w-full hover:border-stone-400">
                     <Image size={15} />
                     {totalPhotos > 0 ? `Add more photos (${totalPhotos}/${MAX_PHOTOS})` : `Add photos (up to ${MAX_PHOTOS})`}
                   </button>
                 </div>
               )}
-
               {uploadError && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{uploadError}</p>}
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2 rounded-lg border border-stone-300 text-sm text-stone-600 hover:bg-stone-50">Cancel</button>

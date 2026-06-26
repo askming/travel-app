@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import MarkdownContent from '../components/MarkdownContent'
 import Lightbox from '../components/Lightbox'
+import LabelChip from '../components/LabelChip'
 
 function PhotoGrid({ photos, onPhotoClick }) {
   if (!photos.length) return null
@@ -53,6 +54,11 @@ export default function DiaryEntryPage() {
             {entry.date ? new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
           </p>
           {entry.title && <h1 className="text-2xl font-semibold text-stone-800 mt-1">{entry.title}</h1>}
+          {entry.labels?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {entry.labels.map(l => <LabelChip key={l} label={l} />)}
+            </div>
+          )}
         </div>
         {entry.body && <MarkdownContent source={entry.body} />}
         {photos.length > 0 && (

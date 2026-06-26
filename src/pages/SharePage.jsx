@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { MapPin, Calendar, ArrowRight, Send, Trash2 } from 'lucide-react'
+import LabelChip from '../components/LabelChip'
 import MarkdownContent from '../components/MarkdownContent'
 import TripMap from '../components/TripMap'
 
@@ -112,6 +113,11 @@ function ReadOnlyDiary({ entries, slug }) {
                   </p>
                   {entry.title && <button onClick={() => navigate(entryUrl)} className="font-semibold text-stone-800 mt-0.5 hover:text-stone-500 transition-colors text-left block">{entry.title}</button>}
                   {plain && <p className="text-sm text-stone-600 leading-relaxed line-clamp-4 mt-1">{plain}</p>}
+                  {entry.labels?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {entry.labels.map(l => <LabelChip key={l} label={l} />)}
+                    </div>
+                  )}
                   {(plain.length > 280 || (entry.diary_photos?.length || 0) > 0) && (
                     <div className="flex justify-end mt-2">
                       <button onClick={() => navigate(entryUrl)} className="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-700 font-medium">
