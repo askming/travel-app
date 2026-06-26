@@ -9,3 +9,10 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Restore list styles reset by Tailwind preflight inside markdown content */
+.wmde-markdown ul { list-style: disc; padding-left: 1.5em; }
+.wmde-markdown ol { list-style: decimal; padding-left: 1.5em; }
+.wmde-markdown ul ul { list-style: circle; }
+.wmde-markdown ul ul ul { list-style: square; }
+.wmde-markdown li { margin: 0.2em 0; }

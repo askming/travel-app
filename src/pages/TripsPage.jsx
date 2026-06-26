@@ -128,8 +128,20 @@ export default function TripsPage() {
             <p className="text-stone-500">No trips yet. Create your first one!</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {trips.map(trip => {
+          <div className="space-y-8">
+            {Object.entries(
+              trips.reduce((acc, trip) => {
+                const year = trip.start_date ? new Date(trip.start_date + 'T00:00:00').getFullYear() : 'No date'
+                ;(acc[year] = acc[year] || []).push(trip)
+                return acc
+              }, {})
+            )
+              .sort(([a], [b]) => (b === 'No date' ? -1 : a === 'No date' ? 1 : Number(b) - Number(a)))
+              .map(([year, yearTrips]) => (
+                <div key={year}>
+                  <h2 className="text-sm font-semibold text-stone-400 uppercase tracking-widest mb-3">{year}</h2>
+                  <div className="space-y-3">
+                    {yearTrips.map(trip => {
               const duration = tripDuration(trip.start_date, trip.end_date)
               const tripUrl = trip.slug ? `/trips/${trip.slug}` : `/trips/${trip.id}`
               return (
@@ -160,7 +172,10 @@ export default function TripsPage() {
                   </div>
                 </div>
               )
-            })}
+                    })}
+                  </div>
+                </div>
+              ))}
           </div>
         )}
       </main>
