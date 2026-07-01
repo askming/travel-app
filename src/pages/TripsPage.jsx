@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toSlug } from '../lib/slug'
-import { Plus, LogOut, MapPin, Calendar, Pencil, Trash2 } from 'lucide-react'
+import { Plus, LogOut, MapPin, Calendar, Pencil, Trash2, Map } from 'lucide-react'
 import EmojiPicker from '../components/EmojiPicker'
+import WorldMap from '../components/WorldMap'
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400'
 
@@ -55,9 +56,16 @@ export default function TripsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingTrip, setEditingTrip] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [mapStops, setMapStops] = useState([])
+  const [showMap, setShowMap] = useState(true)
   const navigate = useNavigate()
 
-  useEffect(() => { fetchTrips() }, [])
+  useEffect(() => {
+    fetchTrips()
+    supabase.from('stops').select('destination, lat, lng, trips(title, cover_emoji)')
+      .not('lat', 'is', null).not('lng', 'is', null)
+      .then(({ data }) => setMapStops(data || []))
+  }, [])
 
   async function fetchTrips() {
     const { data } = await supabase.from('trips').select('*').order('start_date', { ascending: false })
@@ -120,6 +128,24 @@ export default function TripsPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-8">
+        {mapStops.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Map size={12} /> Places visited ({mapStops.length} stops)
+              </p>
+              <button onClick={() => setShowMap(v => !v)} className="text-xs text-stone-400 hover:text-stone-600">
+                {showMap ? 'Hide map' : 'Show map'}
+              </button>
+            </div>
+            {showMap && (
+              <div className="h-72 rounded-xl overflow-hidden border border-stone-200">
+                <WorldMap stops={mapStops} />
+              </div>
+            )}
+          </div>
+        )}
+
         {loading ? (
           <p className="text-stone-400 text-center py-16">Loading…</p>
         ) : trips.length === 0 ? (
